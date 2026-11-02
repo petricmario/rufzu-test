@@ -137,6 +137,10 @@ button, a { touch-action: manipulation; }
 button:focus-visible, a:focus-visible { outline: 3px solid #f3a63e; outline-offset: 2px; }
 .ocr-box { margin-top: 10px; padding: 12px; background: #111f34; border: 1px solid #35547d; color: var(--ink); border-radius: 10px; font-size: 13px; }
 #ocrText { background: #0a1220 !important; color: var(--ink); }
+#ocrMatches { color: var(--ink) !important; }
+#ocrMatches > div { color: var(--ink); }
+#ocrMatches button { color: #fff !important; }
+#ocrBox { background: #111f34; color: var(--ink); }
 #ticketResult { background: #0d1727 !important; border: 1px solid var(--border); color: var(--ink); }
 #routeText, #kmBox, #zoneText, #zonePath, #fareBox { overflow-wrap: anywhere; }
 #zoneText { color: #ffb44b; }
@@ -951,32 +955,42 @@ async function doOCR(file, type){
     }
     var normalizedText=' '+normOCR(text)+' ';
     var compactText=normalizedText.replace(/\s+/g,'');
+    var detectedOrder=[];
     var detectedCodes={};
-    var codeRegex=/\b(FS|GL|LF|MS|SV)\s*([0-9OQID|]{3})\b/gi;
+    // Codes auch bei Leerzeichen oder Trennzeichen aus der OCR erkennen.
+    var codeRegex=/(FS|GL|LF|MS|SV)[\s\-:._]*([0-9OQID|]{3})/gi;
     var codeMatch;
     while((codeMatch=codeRegex.exec(text))!==null){
       var digits=codeMatch[2].toUpperCase().replace(/[OQD]/g,'0').replace(/[IL|]/g,'1');
-      if(/^\d{3}$/.test(digits)) detectedCodes[(codeMatch[1]+digits).toUpperCase()]=true;
-    }
-    for(var i=0;i<stops.length;i++){
-      var stop=stops[i];
-      var code=String(stop.code||'').toUpperCase().replace(/\s/g,'');
-      var name=normOCR(stop.name);
-      var codeMatchFound=!!detectedCodes[code];
-      if(!codeMatchFound && code.length>=4){
-        // Vergleich mit normalisiertem Text als zusätzlicher Fallback.
-        codeMatchFound=compactText.indexOf(code.toLowerCase())>=0;
+      var normalizedCode=(codeMatch[1]+digits).toUpperCase();
+      if(/^((FS|GL|LF|MS|SV)\d{3})$/.test(normalizedCode) && !detectedCodes[normalizedCode]){
+        detectedCodes[normalizedCode]=true;
+        detectedOrder.push({code:normalizedCode,pos:codeMatch.index});
       }
-      var nameMatch=false;
-      if(name.length>=7){
-        nameMatch=normalizedText.indexOf(' '+name+' ')>=0;
-        if(!nameMatch){
-          var nameWords=name.split(' ').filter(Boolean);
-          var prefix=nameWords.slice(0,2).join(' ');
-          if(prefix.length>=9 && normalizedText.indexOf(' '+prefix)>=0) nameMatch=true;
+    }
+    // Zuerst alle erkannten Haltestellencodes in Foto-Reihenfolge übernehmen.
+    for(var c=0;c<detectedOrder.length;c++){
+      var codeStop=stops.find(function(item){return String(item.code).toUpperCase()===detectedOrder[c].code;});
+      if(codeStop) found.push(codeStop);
+    }
+    // Falls Codes fehlen: markante Wörter aus den Haltestellennamen als Fallback vergleichen.
+    if(found.length<2){
+      var candidates=[];
+      for(var i=0;i<stops.length;i++){
+        var stop=stops[i];
+        if(found.some(function(item){return item.code===stop.code;})) continue;
+        var name=normOCR(String(stop.name||'').replace(/^(FS|GL|LF|MS|SV)\d+\s*/, ''));
+        var words=name.split(' ').filter(function(word){return word.length>=4 && !/^(abzw|bahnhof|ort|bei|und|der|die|das|strasse|straße)$/.test(word);});
+        var hits=words.filter(function(word){return normalizedText.indexOf(' '+word+' ')>=0;});
+        if(hits.length>=2 || (hits.length===1 && hits[0].length>=8)){
+          var firstPos=normalizedText.indexOf(' '+hits[0]+' ');
+          candidates.push({stop:stop,score:hits.length,pos:firstPos<0?999999:firstPos});
         }
       }
-      if(codeMatchFound || nameMatch) found.push(stop);
+      candidates.sort(function(x,y){return b.score-a.score || x.pos-y.pos;});
+      for(var n=0;n<candidates.length && found.length<10;n++){
+        if(!found.some(function(item){return item.code===candidates[n].stop.code;})) found.push(candidates[n].stop);
+      }
     }
     // Deduplizieren
     var unique={}; var uniqFound=[];
@@ -992,7 +1006,7 @@ async function doOCR(file, type){
         var html='<div style="color:#00c853;font-weight:700">✅ '+found.length+' Haltestellen gefunden:</div><div style="margin-top:8px;display:grid;gap:6px">';
         for(var k=0;k<found.length;k++){
           var matchedStop=found[k];
-          html+='<div style="display:flex;justify-content:space-between;align-items:center;padding:6px;background:#fff;border-radius:6px"><span><b>'+matchedStop.name+'</b> ('+matchedStop.code+')</span><span><button onclick="setFrom(\''+matchedStop.code+'\')" style="padding:4px 8px;background:#00c853;color:#fff;border:0;border-radius:4px;font-size:11px;margin-right:4px">Als Von</button><button onclick="setTo(\''+matchedStop.code+'\')" style="padding:4px 8px;background:#d32f2f;color:#fff;border:0;border-radius:4px;font-size:11px">Als Nach</button></span></div>';
+          html+='<div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:center;padding:8px;background:#172338;color:#f4f7fc;border:1px solid #34445d;border-radius:6px"><span style="color:#f4f7fc;min-width:120px;flex:1"><b>'+matchedStop.name+'</b> ('+matchedStop.code+')</span><span style="display:flex;gap:4px;flex-shrink:0"><button onclick="setFrom(\''+matchedStop.code+'\')" style="padding:6px 8px;background:#00a86b;color:#fff;border:0;border-radius:4px;font-size:11px">Als Von</button><button onclick="setTo(\''+matchedStop.code+'\')" style="padding:6px 8px;background:#d94747;color:#fff;border:0;border-radius:4px;font-size:11px">Als Nach</button></span></div>';
         }
         html+='</div>';
         if(found.length>=2){
