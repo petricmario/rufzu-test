@@ -205,8 +205,8 @@ main > .card:has(#map) { background: var(--card); }
 <div class="vehicle-hero"><div class="vehicle-photo"><img src="rufzu_8sitzer.png" alt="Bus"></div><div style="padding:12px"><b>Mercedes Vito 8-Sitzer</b><br><small>Komfortabel & sicher – RufZu Zollfeld</small></div></div>
 
 <section class="card">
-<div>Von: <div style="position:relative"><div class="inputwrap"><input id="from" placeholder="Haltestelle eingeben"><button class="clear" id="clearFrom">×</button></div><div class="suggestions" id="fromSug" hidden></div></div><button id="locFrom" style="margin-top:6px;padding:6px 12px;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer">📍 Standort Von</button><div id="locFromStatus" style="font-size:11px;margin-top:4px"></div></div>
-<div style="margin-top:12px">Nach: <div style="position:relative"><div class="inputwrap"><input id="to" placeholder="Haltestelle eingeben"><button class="clear" id="clearTo">×</button></div><div class="suggestions" id="toSug" hidden></div></div><button id="locTo" style="margin-top:6px;padding:6px 12px;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer">📍 Standort Nach</button><div id="locToStatus" style="font-size:11px;margin-top:4px"></div></div>
+<div>Von: <div style="position:relative"><div class="inputwrap"><input id="from" placeholder="Haltestelle eingeben"><button class="clear" id="clearFrom">×</button></div><div class="suggestions" id="fromSug" hidden></div></div><button id="locFrom" style="margin-top:6px;padding:6px 12px;border:1px solid #cbd5e1;border-radius:8px;background:#f1f5f9;color:#1f2937;font-weight:600;cursor:pointer">📍 Standort Von</button><div id="locFromStatus" style="font-size:11px;margin-top:4px"></div></div>
+<div style="margin-top:12px">Nach: <div style="position:relative"><div class="inputwrap"><input id="to" placeholder="Haltestelle eingeben"><button class="clear" id="clearTo">×</button></div><div class="suggestions" id="toSug" hidden></div></div><button id="locTo" style="margin-top:6px;padding:6px 12px;border:1px solid #cbd5e1;border-radius:8px;background:#f1f5f9;color:#1f2937;font-weight:600;cursor:pointer">📍 Standort Nach</button><div id="locToStatus" style="font-size:11px;margin-top:4px"></div></div>
 <button class="calc" id="calcBtn">Tarif berechnen</button>
 <div class="scanrow"><button class="scanbtn" id="scanTicketBtn">📸 Ticket</button><button class="scanbtn" id="scanLocationBtn">📍 Ort</button></div>
 <div class="scanrow"><button class="scanbtn" id="scanTimetableBtn">📅 Fahrplan - Von/Nach</button><button class="scanbtn" id="scanKlimaticketBtn">🎫 Klimaticket</button></div>
@@ -850,14 +850,32 @@ async function doOCR(file, type){
     if(ocrTextEl) ocrTextEl.textContent=text;
     if(status) status.textContent='✅ Text erkannt – suche Haltestellen...';
     
-    // Suche Haltestellen im Text
+    // OCR-Treffer robuster finden: Umlaute, Satzzeichen und Zeilenumbrüche normalisieren.
     var found=[];
-    var lower=text.toLowerCase();
+    function normOCR(value){
+      return String(value||'').toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+        .replace(/ß/g,'ss')
+        .replace(/[^a-z0-9]+/g,' ')
+        .trim().replace(/\s+/g,' ');
+    }
+    var normalizedText=' '+normOCR(text)+' ';
+    var compactText=normalizedText.replace(/\s+/g,'');
     for(var i=0;i<stops.length;i++){
       var s=stops[i];
-      // Suche nach Code (z.B. MS003, FS074) oder Name Teil
-      if(lower.indexOf(s.code.toLowerCase())>=0){ found.push(s); }
-      else if(s.name.length>4 && lower.indexOf(s.name.toLowerCase().substring(0,8))>=0){ found.push(s); }
+      var code=normOCR(s.code);
+      var name=normOCR(s.name);
+      var codeMatch=code.length>=4 && compactText.indexOf(code.replace(/\s/g,''))>=0;
+      var nameMatch=false;
+      if(name.length>=6){
+        nameMatch=normalizedText.indexOf(' '+name+' ')>=0;
+        // Lange Haltestellennamen können auf Fotos abgeschnitten sein.
+        if(!nameMatch && name.length>=11){
+          var prefix=name.split(' ').filter(Boolean).slice(0,2).join(' ');
+          if(prefix.length>=8) nameMatch=normalizedText.indexOf(' '+prefix+' ')>=0;
+        }
+      }
+      if(codeMatch || nameMatch) found.push(s);
     }
     // Deduplizieren
     var unique={}; var uniqFound=[];
