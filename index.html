@@ -987,7 +987,7 @@ async function doOCR(file, type){
           candidates.push({stop:stop,score:hits.length,pos:firstPos<0?999999:firstPos});
         }
       }
-      candidates.sort(function(x,y){return b.score-a.score || x.pos-y.pos;});
+      candidates.sort(function(x,y){return y.score-x.score || x.pos-y.pos;});
       for(var n=0;n<candidates.length && found.length<10;n++){
         if(!found.some(function(item){return item.code===candidates[n].stop.code;})) found.push(candidates[n].stop);
       }
