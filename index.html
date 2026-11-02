@@ -7,6 +7,32 @@
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 
 <style>
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 9px 14px;
+  border: 1px solid #3a4c66;
+  border-radius: 9px;
+  background: #202e43;
+  color: #f4f7fc;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.action-btn:hover {
+  background: #2a3c55;
+  border-color: #e98b16;
+}
+
+.action-btn.primary {
+  background: #e98b16;
+  border-color: #e98b16;
+  color: #111827;
+}
 /* Ruf:Zu responsive dark theme. Adds styling only; do not replace application JavaScript. */
 :root {
   --orange: #e98b16;
@@ -167,8 +193,15 @@ main > .card:has(#map) { background: var(--card); }
 </head>
 <body>
 <div class="app">
-<header class="hero"><div><span class="ruf">Ruf:<span class="zu">Zu</span></span> Zollfeld</div><a class="tel" href="tel:+43421293083">04212 93083</a></header>
-<main>
+<header class="hero">
+  <div class="brand">
+    <img class="brand-logo"
+         src="logo-rufzu-dark.ec60201714ca.png"
+         alt="Ruf:Zu Logo">
+    <span class="brand-sub">Zollfeld</span>
+  </div>
+  <a class="tel" href="tel:+43421293083">04212 93083</a>
+</header><main>
 <div class="vehicle-hero"><div class="vehicle-photo"><img src="rufzu_8sitzer.png" alt="Bus"></div><div style="padding:12px"><b>Mercedes Vito 8-Sitzer</b><br><small>Komfortabel & sicher – RufZu Zollfeld</small></div></div>
 
 <section class="card">
@@ -176,12 +209,14 @@ main > .card:has(#map) { background: var(--card); }
 <div style="margin-top:12px">Nach: <div style="position:relative"><div class="inputwrap"><input id="to" placeholder="Haltestelle eingeben"><button class="clear" id="clearTo">×</button></div><div class="suggestions" id="toSug" hidden></div></div><button id="locTo" style="margin-top:6px;padding:6px 12px;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer">📍 Standort Nach</button><div id="locToStatus" style="font-size:11px;margin-top:4px"></div></div>
 <button class="calc" id="calcBtn">Tarif berechnen</button>
 <div class="scanrow"><button class="scanbtn" id="scanTicketBtn">📸 Ticket</button><button class="scanbtn" id="scanLocationBtn">📍 Ort</button></div>
-<div class="scanrow"><button class="scanbtn" id="scanTimetableBtn">📅 Fahrplan – Auto-Fill Von/Nach</button><button class="scanbtn" id="scanKlimaticketBtn">🎫 Klimaticket</button></div>
+<div class="scanrow"><button class="scanbtn" id="scanTimetableBtn">📅 Fahrplan - Von/Nach</button><button class="scanbtn" id="scanKlimaticketBtn">🎫 Klimaticket</button></div>
 <div id="ocrStatus" style="font-size:12px;margin-top:8px;color:#666"></div>
 <div id="ocrBox" class="ocr-box"><b>📖 OCR Ergebnis:</b><div id="ocrText" style="margin-top:6px;white-space:pre-wrap;background:#fff;padding:8px;border-radius:6px;max-height:150px;overflow:auto"></div><div id="ocrMatches" style="margin-top:8px"></div></div>
 <div id="ticketResult" style="display:none;margin-top:8px;padding:10px;background:#f8f9fa;border-radius:10px"></div>
-<div style="margin-top:10px;display:flex;gap:8px"><button id="copyBtn" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer">↗ Kopieren</button> <button id="officialBtn" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer">€ Offiziell</button></div>
-</section>
+<div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px">
+  <button class="action-btn" id="copyBtn">↗ Kopieren</button>
+  <button class="action-btn primary" id="officialBtn">€ Offiziell</button>
+</div></section>
 
 <section class="card" id="result" style="display:none">
 <div id="routeText" style="font-size:14px"></div>
